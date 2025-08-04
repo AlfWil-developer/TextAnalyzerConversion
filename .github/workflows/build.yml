@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Step 2: Simple test to confirm runner works
+      - name: Test step
+        run: echo "✅ GitHub Actions runner is working!"
+
+      # Step 3: Get current date for caching
+      - name: Get Date
+        id: get-date
+        run: echo "date=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+
+      # Step 4: Cache Buildozer global directory
+      - name: Cache Buildozer global directory
+        uses: actions/cache@v3
+        with:
+          path: .buildozer_global
+          key: buildozer-global-${{ hashFiles('buildozer.spec') }}
+
+      # Step 5: Cache local Buildozer build directory
+      - name: Cache Buildozer build directory
+        uses: actions/cache@v3
+        with:
+          path: .buildozer
+          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+
+      # Step 6: Build APK using Buildozer
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          command: buildozer android debug
+          buildozer_version: stable
+
+      # Step 7: Upload APK as an artifact
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: package
+          path: ${{ steps.buildozer.outputs.filename }}
