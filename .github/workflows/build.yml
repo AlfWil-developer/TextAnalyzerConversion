@@ -1,42 +1,34 @@
-name: CI
+name: Build APK
 
 on:
   push:
     branches: [ main ]
+  workflow_dispatch: # lets you run manually from Actions tab
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest  # use latest to avoid queued 20.04 runners
 
     steps:
-      # Step 1: Checkout repository
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Step 2: Simple test to confirm runner works
-      - name: Test step
-        run: echo "✅ GitHub Actions runner is working!"
-
-      # Step 3: Get current date for caching
-      - name: Get Date
+      - name: Get Date for cache key
         id: get-date
-        run: echo "date=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+        run: echo "date=$(date -u +'%Y%m%d')" >> $GITHUB_ENV
 
-      # Step 4: Cache Buildozer global directory
       - name: Cache Buildozer global directory
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .buildozer_global
           key: buildozer-global-${{ hashFiles('buildozer.spec') }}
 
-      # Step 5: Cache local Buildozer build directory
       - name: Cache Buildozer build directory
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: .buildozer
-          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('buildozer.spec') }}
+          key: ${{ runner.os }}-${{ env.date }}-${{ hashFiles('buildozer.spec') }}
 
-      # Step 6: Build APK using Buildozer
       - name: Build with Buildozer
         uses: ArtemSBulgakov/buildozer-action@v1
         id: buildozer
@@ -44,9 +36,8 @@ jobs:
           command: buildozer android debug
           buildozer_version: stable
 
-      # Step 7: Upload APK as an artifact
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
         with:
           name: package
           path: ${{ steps.buildozer.outputs.filename }}
